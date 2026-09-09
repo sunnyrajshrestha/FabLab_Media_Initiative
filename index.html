@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>FabLab Media Initiative — AR</title>
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#141414;font-family:system-ui,sans-serif}
+
+  /* ---- start gate: required so iOS lets the video play with sound ---- */
+  #gate{position:fixed;inset:0;z-index:30;display:grid;place-items:center;text-align:center;
+    padding:8vw;background:#F7EEDD;color:#141414;gap:6vw}
+  #gate h1{font-size:8vw;line-height:1;color:#E8232A;text-shadow:.6vw .6vw 0 #141414}
+  #gate p{font-size:4vw;font-weight:600;line-height:1.6;margin-top:4vw}
+  #go{margin-top:6vw;font-size:6vw;font-weight:800;padding:4vw 9vw;border:1vw solid #141414;
+    border-radius:2vw;background:#FFC800;color:#141414;box-shadow:1vw 1vw 0 #141414;cursor:pointer}
+
+  /* ---- hint shown while no poster is detected ---- */
+  #hint{position:fixed;left:0;right:0;bottom:6vh;z-index:20;text-align:center;color:#fff;
+    font-size:4vw;font-weight:700;text-shadow:0 .5vw 1vw rgba(0,0,0,.8);padding:0 8vw;display:none}
+  #hint.show{display:block}
+
+  /* ---- fallback link, always available ---- */
+  #plain{position:fixed;top:3vh;right:4vw;z-index:20;font-size:3.4vw;font-weight:700;
+    background:rgba(20,20,20,.75);color:#FFC800;padding:2vw 3.5vw;border-radius:2vw;
+    text-decoration:none;display:none}
+  #plain.show{display:block}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div>
+    <h1>CSII FABLAB<br>MEDIA INITIATIVE</h1>
+    <p>Point your camera at the FabLab poster<br>to watch it come alive.</p>
+    <button id="go">START AR</button>
+  </div>
+</div>
+
+<div id="hint">Point at the poster</div>
+<a id="plain" href="fablab-ad.mp4">Watch without AR</a>
+
+<a-scene
+  mindar-image="imageTargetSrc: targets.mind; filterMinCF: 0.001; filterBeta: 0.01; missTolerance: 8; warmupTolerance: 2"
+  color-space="sRGB" embedded renderer="colorManagement: true, physicallyCorrectLights"
+  vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+
+  <a-assets>
+    <video id="ad" src="fablab-ad.mp4" preload="auto" playsinline webkit-playsinline loop crossorigin="anonymous"></video>
+  </a-assets>
+
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+  <!-- 0.5625 x 1 = a 9:16 plane, matching the video -->
+  <a-entity id="target" mindar-image-target="targetIndex: 0">
+    <a-video src="#ad" width="0.5625" height="1" position="0 0 0"></a-video>
+  </a-entity>
+</a-scene>
+
+<script>
+  const video = document.querySelector('#ad');
+  const scene = document.querySelector('a-scene');
+  const target = document.querySelector('#target');
+  const hint  = document.querySelector('#hint');
+  const plain = document.querySelector('#plain');
+
+  // Start only on a real tap — iOS blocks audio otherwise.
+  document.querySelector('#go').addEventListener('click', () => {
+    document.querySelector('#gate').style.display = 'none';
+    hint.classList.add('show');
+    plain.classList.add('show');
+    video.play().catch(() => {});   // primes playback; pauses again below
+    video.pause();
+  });
+
+  // Play only while the poster is in view.
+  target.addEventListener('targetFound', () => {
+    hint.classList.remove('show');
+    video.currentTime = 0;
+    video.play();
+  });
+  target.addEventListener('targetLost', () => {
+    hint.classList.add('show');
+    video.pause();
+  });
+
+  // If the camera can't start at all, send them to the plain video.
+  scene.addEventListener('arError', () => {
+    document.querySelector('#gate').style.display = 'grid';
+    document.querySelector('#gate p').textContent =
+      'Camera not available on this browser. Tap below to watch the video instead.';
+    document.querySelector('#go').textContent = 'WATCH VIDEO';
+    document.querySelector('#go').onclick = () => location.href = 'fablab-ad.mp4';
+  });
+</script>
+</body>
+</html>
